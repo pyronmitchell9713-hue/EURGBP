@@ -1,0 +1,61 @@
+name: Download Dukascopy data
+
+# 1-minute BID candles from Dukascopy (USATECH, USA500 and spot FX pairs), one job per
+# instrument-year (the server is slow and answers 503 under load), then one commit to data/raw/
+# on the branch the run was started from.
+on:
+  workflow_dispatch:
+    inputs:
+      roots:
+        description: 'JSON list, e.g. ["USATECH","USA500"]'
+        default: '["EURUSD","GBPUSD"]'
+      years:
+        description: "JSON list of years"
+        default: "[2020,2021,2022,2023,2024,2025,2026]"
+
+permissions:
+  contents: write
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 14
+      matrix:
+        root: ${{ fromJSON(inputs.roots) }}
+        year: ${{ fromJSON(inputs.years) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pandas numpy
+      - run: python -m tools.dukascopy_download ${{ matrix.root }} --year ${{ matrix.year }} --out out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: data-${{ matrix.root }}-${{ matrix.year }}
+          path: out/
+          if-no-files-found: ignore
+
+  commit:
+    needs: download
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: data-*
+          path: data/raw
+          merge-multiple: true
+      - name: Commit
+        run: |
+          ls -la data/raw
+          git config user.name "github-actions[bot]"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+          git add -f data/raw/*_M1_BID_*_UTC.csv.gz || true
+          git commit -m "Add Dukascopy 1m data" || echo "nothing to commit"
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push
