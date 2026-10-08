@@ -1,7 +1,7 @@
 name: Download OANDA data
 
 # 1-minute BID candles from the OANDA v20 API, one job per pair-year, then one commit to data/raw/oanda/
-# on the branch the run was started from. Needs the repository secret OANDA_API_KEY.
+# on the branch the run was started from. Key: repository secret OANADA_TRADING (or OANDA_API_KEY).
 on:
   workflow_dispatch:
     inputs:
@@ -32,7 +32,7 @@ jobs:
           python-version: "3.11"
       - run: python -m tools.oanda_download ${{ matrix.root }} --year ${{ matrix.year }} --out out
         env:
-          OANDA_API_KEY: ${{ secrets.OANDA_API_KEY }}
+          OANDA_API_KEY: ${{ secrets.OANADA_TRADING || secrets.OANDA_API_KEY }}
       - uses: actions/upload-artifact@v4
         with:
           name: oanda-${{ matrix.root }}-${{ matrix.year }}
