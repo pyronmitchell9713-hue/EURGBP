@@ -1,0 +1,61 @@
+name: Download OANDA data
+
+# 1-minute BID candles from the OANDA v20 API, one job per pair-year, then one commit to data/raw/oanda/
+# on the branch the run was started from. Needs the repository secret OANDA_API_KEY.
+on:
+  workflow_dispatch:
+    inputs:
+      roots:
+        description: 'JSON list, e.g. ["EURUSD","GBPUSD"]'
+        default: '["EURUSD","GBPUSD","AUDUSD","USDCAD"]'
+      years:
+        description: "JSON list of years"
+        default: "[2020,2021,2022,2023,2024,2025,2026]"
+
+permissions:
+  contents: write
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        root: ${{ fromJSON(inputs.roots) }}
+        year: ${{ fromJSON(inputs.years) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m tools.oanda_download ${{ matrix.root }} --year ${{ matrix.year }} --out out
+        env:
+          OANDA_API_KEY: ${{ secrets.OANDA_API_KEY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oanda-${{ matrix.root }}-${{ matrix.year }}
+          path: out/
+          if-no-files-found: ignore
+
+  commit:
+    needs: download
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: oanda-*
+          path: data/raw/oanda
+          merge-multiple: true
+      - name: Commit
+        run: |
+          ls -la data/raw/oanda
+          git config user.name "github-actions[bot]"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+          git add -f data/raw/oanda/*_OANDA_M1_BID_*_UTC.csv.gz || true
+          git commit -m "Add OANDA 1m data" || echo "nothing to commit"
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push
