@@ -9,7 +9,8 @@ OANDA_API_KEY=... python -m tools.oanda_download EURUSD --year 2024 --out out
 import argparse, gzip, json, os, sys, time, urllib.error, urllib.parse, urllib.request
 from datetime import datetime, timezone
 
-INSTRUMENTS = {"EURUSD": "EUR_USD", "GBPUSD": "GBP_USD", "AUDUSD": "AUD_USD", "USDCAD": "USD_CAD"}
+INSTRUMENTS = {"EURUSD": "EUR_USD", "GBPUSD": "GBP_USD", "AUDUSD": "AUD_USD", "USDCAD": "USD_CAD",
+               "XAUUSD": "XAU_USD", "NAS100": "NAS100_USD", "SPX500": "SPX500_USD"}   # gold, NQ and ES CFDs
 HOSTS = ("https://api-fxpractice.oanda.com", "https://api-fxtrade.oanda.com")
 COUNT = 5000
 
