@@ -66,7 +66,9 @@ def main():
                 b = c["bid"]
                 rows.append(f"{t:%Y-%m-%d %H:%M:%S},{b['o']},{b['h']},{b['l']},{b['c']},{c['volume']}")
         last = datetime.fromisoformat(cs[-1]["time"][:19]).replace(tzinfo=timezone.utc)
-        if last >= end or len(cs) < COUNT:   # fewer than asked only when the newest candle is reached
+        # Pages after the first drop the start candle, so a full page has COUNT - 1 candles; stop at the year end,
+        # at the newest candle, or when a page brings nothing new.
+        if last >= end or cs[-1]["time"] == frm or (datetime.now(timezone.utc) - last).total_seconds() < 600:
             break
         frm, first = cs[-1]["time"], False
     os.makedirs(a.out, exist_ok=True)
