@@ -1,0 +1,24 @@
+name: Measure OANDA spreads
+
+# Typical bid/ask spread per instrument over the last N days (printed in the log, nothing committed).
+on:
+  workflow_dispatch:
+    inputs:
+      roots:
+        description: "space-separated roots, e.g. WTICO BCO"
+        default: "XAUUSD NAS100 EURUSD WTICO BCO NATGAS XAGUSD XCU XPTUSD XPDUSD CORN WHEAT SOYBN SUGAR"
+      days:
+        default: "30"
+
+jobs:
+  spread:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m tools.oanda_spread ${{ inputs.roots }} --days ${{ inputs.days }}
+        env:
+          OANDA_API_KEY: ${{ secrets.OANADA_TRADING || secrets.OANDA_API_KEY }}
